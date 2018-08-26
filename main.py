@@ -180,7 +180,7 @@ class HelixClient(discord.Client):
             for option, voters in zip(poll.options, poll.votes):
                 print(option, voters)
                 text += f"{option} [{len(voters)}]: ";
-                text += ", ".join(str(v) for v in voters)
+                text += ", ".join(v.display_name for v in voters)
                 text += "\n"
             text = text.strip()
             await self.send_message(message.channel, "Here are the results for that poll:\n" + text)
