@@ -21,6 +21,9 @@ EMOJI_NUMBERS_TO_INT = {
 }
 
 EMOJI_NUMBERS = [f":{x}:" for x in ENGLISH_NUMBERS]
+UNICODE_EMOJI_NUMBERS = [
+    "0⃣", "1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣"
+]
 
 def create_poll_template_text(options, poll_index):
     if not (2 <= len(options) <= len(EMOJI_NUMBERS)):
@@ -32,11 +35,12 @@ def create_poll_template_text(options, poll_index):
 
 class PollModel:
     def __init__(self, poll_index=None, creator_message=None, 
-                       poll_message=None, options=[]):
+                       poll_message=None, options=[], owner=None):
         self.poll_index = poll_index
         self.creator_message = creator_message
         self.poll_message = poll_message
         self.options = options
+        self.owner = owner
         self.votes = [[] for _ in range(len(self.options))]
         self.active = True
         self.dead = False
@@ -54,6 +58,7 @@ class PollModel:
         else:
             return opt
     def add_vote(self, reaction, user):
+        if self.owner == user: return False
         try:
             self.votes[self.get_emoji_as_index(reaction)].append(user)
         except (KeyError, IndexError) as e:
@@ -61,6 +66,7 @@ class PollModel:
         else:
             return True
     def erase_vote(self, reaction, user):
+        if self.owner == user: return False
         try:
             self.votes[self.get_emoji_as_index(reaction)].remove(user)
         except (KeyError, IndexError, ValueError):
@@ -112,12 +118,14 @@ class HelixClient(discord.Client):
             return False
         else:
             poll_message = await self.send_message(message.channel, template)
-            poll = PollModel(poll_index, message, poll_message, args)
+            poll = PollModel(poll_index, message, poll_message, args, message.server.me)
             if poll_index < len(self.polls):
                 self.polls[poll_index] = poll
             else:
                 self.polls.append(poll)
             self.polls_by_msgid[poll.poll_message.id] = poll
+            for i in range(1, len(poll.options)+1):
+                await self.add_reaction(poll.poll_message, UNICODE_EMOJI_NUMBERS[i])
             return True
 
     async def get_poll_index(self, message, args):
@@ -175,7 +183,7 @@ class HelixClient(discord.Client):
             text = ""
             for option, voters in zip(poll.options, poll.votes):
                 print(option, voters)
-                text += option + ": ";
+                text += f"{option} [{len(voters)}]: ";
                 text += ", ".join(str(v) for v in voters)
                 text += "\n"
             text = text.strip()
