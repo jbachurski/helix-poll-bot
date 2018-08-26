@@ -1,38 +1,101 @@
 import asyncio
+import json
 
 import discord
 
-import credentials
+import caching
 import pollmaker
+import credentials
 
 class HelixClient(discord.Client):
     PREFIX = "&"
     
-    def __init__(self, *args, **kwargs, poll_cache_file="cache/polls.json"):
+    def __init__(self, *args, poll_cache_file="caches/polls.json", **kwargs):
         super().__init__(*args, **kwargs)
         self.polls = []
         self.polls_by_msgid = {}
+        self.poll_cache_file = poll_cache_file
+
+    async def load_cached_polls(self):
+        if self.poll_cache_file is None:
+            return
+        print(f"Looking for poll cache in {self.poll_cache_file}")
+        try:
+            with open(self.poll_cache_file, "r", encoding="utf-8") as file:
+                raw_cache = file.read()
+        except FileNotFoundError:
+            print("No cache was found.")
+            return True
+        print("Loading polls from cache.")
+        hook = caching.discord_support_decoder_hook_factory(self)
+        try:
+            cache = json.loads(raw_cache, object_hook=hook)
+            for sub in cache:
+                stack = [sub]
+                while stack:
+                    current = stack.pop()
+                    it = current.items() if isinstance(current, dict) else enumerate(current)
+                    for key, value in it:
+                        if asyncio.iscoroutine(value):
+                            current[key] = await value 
+                        elif isinstance(value, (dict, list)):
+                            stack.append(value)
+        except json.decoder.JSONDecodeError:
+            print("Failed cache load, aborting. Please clear the cache.")
+            raise
+        for sub in cache:
+            self.polls.append(pollmaker.PollModel.load_from_cache(sub))
+            self.messages.append(self.polls[-1].poll_message)
+        print("Loaded successfully!")
+
+    async def write_poll_cache(self):
+        print("Updating poll cache!")
+        dlist = [poll.create_cache() for poll in self.polls]
+        with open(self.poll_cache_file, "w", encoding="utf-8") as file:
+            s = json.dumps(
+                dlist, cls=caching.DiscordSupportJSONEncoder,
+                sort_keys=True, indent=4
+            )
+            file.write(s)
+        return s
+
+    async def finalize_and_logout(self, do_cache=True):
+        if self.poll_cache_file is not None and do_cache:
+            await self.write_poll_cache()
+        await self.logout()
 
     async def on_ready(self):
         print("Ready!")
+        try:
+            await self.load_cached_polls()
+            self.polls_by_msgid = {
+                poll.poll_message.id: poll for poll in self.polls
+            }
+        except Exception as e:
+            await self.finalize_and_logout(False)
+            raise
+
 
     async def on_message(self, message):
         cont = message.content
         if len(cont) > 64 or len(cont.split("\n"))>1: 
             cont = cont.split("\n")[0][:64] + "..."
         print(f"Got message: {message} ({cont})")
+        polls_changed = False
         if message.content == f'{self.PREFIX}leave':
-            await self.logout()
+            await self.finalize_and_logout()
         elif message.content.startswith(f'{self.PREFIX}addpoll'):
-            await self.add_poll(message)
+            polls_changed = await self.add_poll(message)
         elif message.content.startswith(f'{self.PREFIX}stoppoll'):
-            await self.del_poll(message)
+            polls_changed = await self.del_poll(message)
         elif message.content.startswith(f'{self.PREFIX}delpoll'):
-            await self.kill_poll(message)
+            polls_changed = await self.kill_poll(message)
         elif message.content.startswith(f'{self.PREFIX}votes'):
             await self.list_votes(message)
         elif message.content == "Oy vey.":
             await self.oy_vey(message)
+        if polls_changed:
+            await self.write_poll_cache()
 
     async def add_poll(self, message):
         args = message.content.split()[1:]
@@ -49,7 +112,7 @@ class HelixClient(discord.Client):
             return False
         else:
             poll_message = await self.send_message(message.channel, template)
-            poll = PollModel(poll_index, message, poll_message, args, message.server.me)
+            poll = pollmaker.PollModel(poll_index, message, poll_message, args, message.server.me)
             if poll_index < len(self.polls):
                 self.polls[poll_index] = poll
             else:
@@ -130,6 +193,8 @@ class HelixClient(discord.Client):
         if not poll.active:
             return
         success = poll.add_vote(reaction, user)
+        if success:
+            await self.write_poll_cache()
 
     async def on_reaction_remove(self, reaction, user):
         print(f"Removing reaction {reaction} by {user}")
@@ -139,10 +204,13 @@ class HelixClient(discord.Client):
         if not poll.active:
             return
         success = poll.erase_vote(reaction, user)
+        if success:
+            await self.write_poll_cache()
 
     async def oy_vey(self, message):
         await asyncio.sleep(0.5)
         await self.send_message(message.channel, "Oy vey. :open_mouth:")
+
 
 if __name__ == '__main__':
     client = HelixClient()
