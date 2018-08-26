@@ -134,8 +134,8 @@ class HelixClient(discord.Client):
             return None
         try:
             poll_id = int(args[0].lstrip('0'))-1
-            if poll_id not in range(len(self.polls)):
-                raise IndexError("Out of bounds.")
+            if poll_id not in range(len(self.polls)) or self.polls[poll_id].dead:
+                raise IndexError("No living poll on such index.")
         except (ValueError, IndexError):
             await self.send_message(message.channel, "That's not a valid ID :angry:.")
             return None
@@ -188,7 +188,6 @@ class HelixClient(discord.Client):
                 text += "\n"
             text = text.strip()
             await self.send_message(message.channel, "Here are the results for that poll:\n" + text)
-
 
     async def on_reaction_add(self, reaction, user):
         print(f"Got reaction {reaction} by {user}")
