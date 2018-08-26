@@ -144,7 +144,7 @@ class HelixClient(discord.Client):
             if not poll.active:
                 await self.send_message(message.channel, "I have already deleted that poll.")
                 return False
-            if poll.creator_message.author != message.author:
+            if poll.creator_message.author != message.author and not message.author.administrator:
                 await self.send_message(message.channel, "That's not your poll :exclamation:")
                 return False
             await self.edit_message(poll.poll_message, poll.poll_message.content + "\n[This poll has ended.]")
@@ -160,7 +160,7 @@ class HelixClient(discord.Client):
             if poll.dead:
                 await self.send_message(message.channel, "I have already killed that poll.")
                 return False
-            if poll.creator_message.author != message.author:
+            if poll.creator_message.author != message.author and not message.author.administrator:
                 await self.send_message(message.channel, "That's not your poll :exclamation:")
                 return False
             await self.edit_message(poll.poll_message, poll.poll_message.content + "\n[This poll's results were deleted and you can no longer vote officially in it.]")
