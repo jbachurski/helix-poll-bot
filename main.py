@@ -200,11 +200,12 @@ class HelixClient(discord.Client):
 
     async def on_reaction_remove(self, reaction, user):
         print(f"Removing reaction {reaction} by {user}")
-        if (reaction.message.id not in self.polls_by_msgid) or \
-           (not self.polls_by_msgid[reaction.message.id].active):
-            print("Didn't do anything about it, though.")
+        if (reaction.message.id not in self.polls_by_msgid):
             return
-        success = self.polls_by_msgid[reaction.message.id].erase_vote(reaction, user)
+        poll = self.polls_by_msgid[reaction.message.id]
+        if not poll.active:
+            return
+        success = poll.erase_vote(reaction, user)
 
     async def oy_vey(self, message):
         await asyncio.sleep(0.5)
