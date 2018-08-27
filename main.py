@@ -78,7 +78,6 @@ class HelixClient(discord.Client):
             await self.finalize_and_logout(False)
             raise
 
-
     async def on_message(self, message):
         cont = message.content
         if len(cont) > 64 or len(cont.split("\n"))>1: 
@@ -101,8 +100,11 @@ class HelixClient(discord.Client):
             await self.write_poll_cache()
 
     async def add_poll(self, message):
-        args = message.content.split()[1:]
         try:
+            left = message.content.find('(')
+            right = message.content.rfind(')')
+            string = message.content[left:right] + ",)"
+            args = ast.literal_eval(string)
             for i in range(len(self.polls)):
                 if self.polls[i].dead:
                     poll_index = i
@@ -110,7 +112,7 @@ class HelixClient(discord.Client):
             else:
                 poll_index = len(self.polls)
             template = pollmaker.create_poll_template_text(args, poll_index+1)
-        except ValueError:
+        except (SyntaxError, ValueError):
             await self.send_message(message.channel, "Sorry, I couldn't create the poll :frowning:")
             return False
         else:
