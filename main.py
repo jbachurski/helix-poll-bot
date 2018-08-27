@@ -19,6 +19,18 @@ class HelixClient(discord.Client):
         self.polls_by_msgid = {}
         self.poll_cache_file = poll_cache_file
 
+    def command_arg_parse(instr):
+        left = instr.find('(')
+        right = instr.rfind(')')
+        if right - left > 1:
+            back = ",)"
+        elif ")" in s:
+            back = ")"
+        else:
+            back = ""
+        string = instr[left:right] + back
+        return ast.literal_eval(string)
+
     async def load_cached_polls(self):
         if self.poll_cache_file is None:
             return
@@ -101,10 +113,7 @@ class HelixClient(discord.Client):
 
     async def add_poll(self, message):
         try:
-            left = message.content.find('(')
-            right = message.content.rfind(')')
-            string = message.content[left:right] + ",)"
-            args = ast.literal_eval(string)
+            args = self.command_arg_parse(message.content)
             for i in range(len(self.polls)):
                 if self.polls[i].dead:
                     poll_index = i
