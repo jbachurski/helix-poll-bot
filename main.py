@@ -1,3 +1,5 @@
+import os
+import ast
 import asyncio
 import json
 
@@ -7,13 +9,15 @@ import caching
 import pollmaker
 import credentials
 
+DEFAULT_POLL_CACHE_FILENAME = os.path.join("caches", "polls.json")
+
 def is_admin(member):
     return member.server_permissions.administrator
 
 class HelixClient(discord.Client):
     PREFIX = "&"
-    
-    def __init__(self, *args, poll_cache_file="caches/polls.json", **kwargs):
+
+    def __init__(self, *args, poll_cache_file=DEFAULT_POLL_CACHE_FILENAME, **kwargs):
         super().__init__(*args, **kwargs)
         self.polls = []
         self.polls_by_msgid = {}
@@ -28,7 +32,7 @@ class HelixClient(discord.Client):
         # and is ignored for larger tuples: `(foo, bar,)`.
         if right - left > 1:
             back = ",)"
-        elif ")" in s:
+        elif ")" in instr:
             back = ")"
         else:
             back = ""
@@ -119,6 +123,12 @@ class HelixClient(discord.Client):
     async def add_poll(self, message):
         try:
             args = self.command_arg_parse(message.content)
+            if args and isinstance(args[-1], dict):
+                kwargs = args.pop()
+            else:
+                kwargs = {}
+            if any(not isinstance(o, str) for o in args):
+                raise ValueError("(At least) one of the arguments was not a string")
             for i in range(len(self.polls)):
                 if self.polls[i].dead:
                     poll_index = i
