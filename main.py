@@ -19,9 +19,13 @@ class HelixClient(discord.Client):
         self.polls_by_msgid = {}
         self.poll_cache_file = poll_cache_file
 
+    @staticmethod
     def command_arg_parse(instr):
         left = instr.find('(')
         right = instr.rfind(')')
+        # The comma at the end raises a SyntaxError for empty tuples,
+        # but it allows 1-element tuples: `(spam,)` 
+        # and is ignored for larger tuples: `(foo, bar,)`.
         if right - left > 1:
             back = ",)"
         elif ")" in s:
@@ -34,7 +38,8 @@ class HelixClient(discord.Client):
     async def load_cached_polls(self):
         if self.poll_cache_file is None:
             return
-        print(f"Looking for poll cache in {self.poll_cache_file}")
+        path = os.path.join(os.getcwd(), self.poll_cache_file)
+        print(f"Looking for poll cache in {path}")
         try:
             with open(self.poll_cache_file, "r", encoding="utf-8") as file:
                 raw_cache = file.read()
