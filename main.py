@@ -5,6 +5,7 @@ import json
 
 import discord
 
+import commands
 import caching
 import pollmaker
 import credentials
@@ -22,22 +23,8 @@ class HelixClient(discord.Client):
         self.polls = []
         self.polls_by_msgid = {}
         self.poll_cache_file = poll_cache_file
+        self.command_handler = commands.CommandHandler()
 
-    @staticmethod
-    def command_arg_parse(instr):
-        left = instr.find('(')
-        right = instr.rfind(')')
-        # The comma at the end raises a SyntaxError for empty tuples,
-        # but it allows 1-element tuples: `(spam,)` 
-        # and is ignored for larger tuples: `(foo, bar,)`.
-        if right - left > 1:
-            back = ",)"
-        elif ")" in instr:
-            back = ")"
-        else:
-            back = ""
-        string = instr[left:right] + back
-        return ast.literal_eval(string)
 
     async def load_cached_polls(self):
         if self.poll_cache_file is None:
@@ -115,18 +102,12 @@ class HelixClient(discord.Client):
             polls_changed = await self.kill_poll(message)
         elif message.content.startswith(f'{self.PREFIX}votes'):
             await self.list_votes(message)
-        elif message.content == "Oy vey.":
-            await self.oy_vey(message)
         if polls_changed:
             await self.write_poll_cache()
 
     async def add_poll(self, message):
         try:
-            args = self.command_arg_parse(message.content)
-            if args and isinstance(args[-1], dict):
-                kwargs = args.pop()
-            else:
-                kwargs = {}
+            args, kwargs = self.command_handler.command_arg_parse(message.content)
             if any(not isinstance(o, str) for o in args):
                 raise ValueError("(At least) one of the arguments was not a string")
             for i in range(len(self.polls)):
@@ -235,10 +216,6 @@ class HelixClient(discord.Client):
         success = poll.erase_vote(reaction, user)
         if success:
             await self.write_poll_cache()
-
-    async def oy_vey(self, message):
-        await asyncio.sleep(0.5)
-        await self.send_message(message.channel, "Oy vey. :open_mouth:")
 
 
 if __name__ == '__main__':
