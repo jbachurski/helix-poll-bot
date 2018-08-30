@@ -45,7 +45,7 @@ class HelixClient(discord.Client):
             for func in self.listeners["on_ready"].values():
                 await func()
         except Exception as e:
-            await self.finalize_and_logout(False)
+            await self.finalize_and_logout()
             raise
         else:
             self.ready = True

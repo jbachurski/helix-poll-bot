@@ -136,7 +136,7 @@ async def load_cached_polls(self):
     print("Loaded successfully!")
 
 async def write_poll_cache(self):
-    if self.poll_cache_file is None:
+    if self.poll_cache_file is None or not self.ready:
         return
     print("Updating poll cache!")
     dlist = [poll.create_cache() for poll in self.polls]
