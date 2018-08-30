@@ -1,8 +1,7 @@
+import asyncio
 import json
 
 import discord
-
-import pollmaker
 
 SUPPORTED_DISCORD_TYPES = (
     discord.Server, discord.Channel, discord.Message, 
@@ -69,3 +68,19 @@ class DiscordSupportJSONEncoder(json.JSONEncoder):
             return cache_discord_object(obj)
         else:
             return super().default(obj)
+
+async def await_all(cache):
+    for sub in cache:
+        stack = [sub]
+        while stack:
+            current = stack.pop()
+            it = current.items() if isinstance(current, dict) else enumerate(current)
+            for key, value in it:
+                if asyncio.iscoroutine(value):
+                    try:
+                        current[key] = await value 
+                    except discord.errors.NotFound:
+                        print(f"Couldn't await '{value}' (error 404), using temporary None")
+                        current[key] = None
+                elif isinstance(value, (dict, list)):
+                    stack.append(value)

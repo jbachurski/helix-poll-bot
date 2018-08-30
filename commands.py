@@ -1,4 +1,5 @@
 import ast
+import asyncio
 
 class CommandHandler:
     def __init__(self, prefix):
@@ -6,7 +7,7 @@ class CommandHandler:
         self.commands = {}
         self.groups = {}
 
-    def name_satisfies_no_prefixes(name):
+    def is_valid_command_name(self, name):
         for pre in self.commands:
             if pre.startswith(name) or name.startswith(pre):
                 return False
@@ -14,7 +15,7 @@ class CommandHandler:
             return True
 
     def add_command(self, name, func):
-        assert name_satisfies_no_prefixes(name), \
+        assert self.is_valid_command_name(name), \
                f"{name} doesn't satisfy no-prefixes rule"
         self.commands[name] = func
 
@@ -22,7 +23,7 @@ class CommandHandler:
         del self.commands[name]
 
     def add_command_group(self, group, commands):
-        assert all(name_satisfies_no_prefixes(name) 
+        assert all(self.is_valid_command_name(name) 
                    for name, func in commands), \
                f"Group {group} doesn't satisfy no-prefixes rule"
         self.groups[group] = tuple(c[0] for c in commands)
@@ -35,7 +36,7 @@ class CommandHandler:
         del self.groups[group]
 
     @staticmethod
-    def command_arg_parse(instr):
+    def command_find_args(instr):
         left = instr.find('(')
         right = instr.rfind(')')
         # The comma at the end raises a SyntaxError for empty tuples,
@@ -55,9 +56,9 @@ class CommandHandler:
             kwargs = {}
         return args, kwargs
 
-    def check_for_command_call(string, **kwargs):
+    async def handle_command_call(self, string, *args, **kwargs):
         if not string: return
         body = string.split()[0]
-        for name, func in self.commands.values():
+        for name, func in self.commands.items():
             if body.startswith(self.prefix + name):
-                func(**kwargs)
+                await func(*args, **kwargs)
