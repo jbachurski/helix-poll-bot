@@ -25,10 +25,12 @@ UNICODE_EMOJI_NUMBERS = [
     "0⃣", "1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣"
 ]
 
-def create_poll_template_text(options, poll_index):
+def create_poll_template_text(options, poll_index, title=None):
     if not (2 <= len(options) <= len(EMOJI_NUMBERS)):
         raise ValueError("Invalid option count")
     template = f"A new poll (ID {str(poll_index).zfill(3)}) is approaching!\n=====\n"
+    if title is not None:
+        template += title + "\n"
     for i in range(len(options)):
         template += f"{EMOJI_NUMBERS[i+1]}: {options[i]}\n"
     return template.strip()
@@ -191,7 +193,7 @@ async def handle_poll_message_removal(self, message):
     if message.id in self.polls_by_msgid:
         self.polls_by_msgid[message.id].kill()
         self.polls_changed = True
-    self.assert_updated_poll_cache()
+    await self.assert_updated_poll_cache()
 
 
 class PollmakerCommands:
@@ -206,7 +208,7 @@ class PollmakerCommands:
                     break
             else:
                 poll_index = len(self.polls)
-            template = create_poll_template_text(args, poll_index+1)
+            template = create_poll_template_text(args, poll_index+1, kwargs.get("title", None))
         except (SyntaxError, ValueError):
             await self.send_message(message.channel, "Sorry, I couldn't create the poll :frowning:")
             return False
@@ -279,9 +281,10 @@ def inject_module(client):
     client.polls_changed = False
     client.write_poll_cache = bound(write_poll_cache)
     client.get_poll_index = bound(get_poll_index)
+    client.assert_updated_poll_cache = bound(assert_updated_poll_cache)
     client.listeners["on_ready"]["pollmaker_load"] = bound(load_cached_polls)
     client.listeners["finalize"]["pollmaker_write"] = client.write_poll_cache
-    client.listeners["after_on_message"]["pollmaker_update"] = bound(assert_updated_poll_cache)
+    client.listeners["after_on_message"]["pollmaker_update"] = client.assert_updated_poll_cache
     client.listeners["on_reaction_add"]["pollmaker_update"] = bound(handle_reaction_addition)
     client.listeners["on_reaction_remove"]["pollmaker_update"] = bound(handle_reaction_removal)
     client.listeners["on_message_delete"]["pollmaker_delete"] = bound(handle_poll_message_removal)
@@ -299,6 +302,7 @@ def eject_module(client):
     del client.polls_changed
     del client.write_poll_cache
     del client.get_poll_index
+    del client.assert_updated_poll_cache
     del client.listeners["on_ready"]["pollmaker_load"]
     del client.listeners["finalize"]["pollmaker_write"]
     del client.listeners["after_on_message"]["pollmaker_update"]
