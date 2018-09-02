@@ -51,7 +51,8 @@ class CommandHandler:
         string = instr[left:right] + back
         args = ast.literal_eval(string)
         if args and isinstance(args[-1], dict):
-            kwargs = args.pop()
+            kwargs = args[-1]
+            args = args[:-1]
         else:
             kwargs = {}
         return args, kwargs
