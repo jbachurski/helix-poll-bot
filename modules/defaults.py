@@ -1,9 +1,11 @@
 import types
 import importlib
 from . import pollmaker
+from utils import is_admin
 
 async def leave(self, message):
-    await self.finalize_and_logout()
+    if is_admin(message.author):
+        await self.finalize_and_logout()
 
 async def reload_pollmaker(self, message):
     print("Reloading pollmaker...")
