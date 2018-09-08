@@ -16,23 +16,25 @@ ENGLISH_NUMBERS_TO_INT = {
     "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4,
     "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9
 }
-EMOJI_NUMBERS_TO_INT = {
-    "0⃣": 0, "1⃣": 1, "2⃣": 2, "3⃣": 3, "4⃣": 4, 
-    "5⃣": 5, "6⃣": 6, "7⃣": 7, "8⃣": 8, "9⃣": 9
-}
 EMOJI_NUMBERS = [f":{x}:" for x in ENGLISH_NUMBERS]
 UNICODE_EMOJI_NUMBERS = [
-    "0⃣", "1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣"
+    "0⃣", "1⃣", "2⃣", "3⃣", "4⃣", "5⃣", "6⃣", "7⃣", "8⃣", "9⃣",
+    "🇦", "🇧", "🇨", "🇩", "🇪", "🇫", "🇬", "🇭", "🇮", 
+    "🇯", "🇰", "🇱", "🇲", "🇳", "🇴", "🇵", "🇶", "🇷",
+    "🇸", "🇹", "🇺", "🇻", "🇼", "🇽", "🇾", "🇿"
 ]
+EMOJI_NUMBERS_TO_INT = {
+    c: i for c, i in enumerate(UNICODE_EMOJI_NUMBERS)
+}
 
 def create_poll_template_text(options, poll_index, title=None):
-    if not (2 <= len(options) <= len(EMOJI_NUMBERS)):
+    if not (2 <= len(options) <= len(UNICODE_EMOJI_NUMBERS)):
         raise ValueError("Invalid option count")
     template = f"A new poll (ID {str(poll_index).zfill(3)}) is approaching!\n=====\n"
     if title is not None:
         template += title + "\n"
     for i in range(len(options)):
-        template += f"{EMOJI_NUMBERS[i+1]}: {options[i]}\n"
+        template += f"{UNICODE_EMOJI_NUMBERS[i]}: {options[i]}\n"
     return template.strip()
 
 class PollModel:
@@ -128,8 +130,8 @@ async def load_cached_polls(self):
     for sub in cache:
         obj = PollModel.load_from_cache(sub)
         if obj.poll_message is None:
-            print(f"Poll message for poll ID {obj.poll_index} is gone, deactivating")
-            obj.deactivate()
+            print(f"Poll message for poll ID {obj.poll_index} is gone, deleting")
+            continue
         self.polls.append(obj)
         self.messages.append(self.polls[-1].poll_message)
     self.polls_by_msgid = {
