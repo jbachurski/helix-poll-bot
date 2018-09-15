@@ -62,4 +62,5 @@ class CommandHandler:
         body = string.split()[0]
         for name, func in self.commands.items():
             if body.startswith(self.prefix + name):
-                await func(*args, **kwargs)
+                status = await func(*args, **kwargs)
+                print(f"Executed {name}, got status: '{status}'")

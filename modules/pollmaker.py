@@ -278,6 +278,23 @@ class PollmakerCommands:
             text = text.strip()
             await self.send_message(message.channel, "Here are the results for that poll:\n" + text)
 
+    async def reread_votes(self, message):
+        args = message.content.split()[1:]
+        poll_id = await self.get_poll_index(message, args)
+        if poll_id is not None:
+            poll = self.polls[poll_id]
+            if not (poll.author == message.author or is_admin(message.author)):
+                await self.send_message(message.channel, "That's not your poll :exclamation:")
+                return False
+            for v in poll.votes:
+                v.clear()
+            for reaction in poll.poll_message.reactions:
+                user_list = await self.get_reaction_users(reaction, limit=100)
+                for user in user_list:
+                    await handle_reaction_addition(self, reaction, user)
+            await self.send_message(message.channel, "Done rereading :)")
+            return True
+
 def inject_module(client):
     def bound(func): return types.MethodType(func, client)
     client.polls_changed = False
@@ -296,7 +313,8 @@ def inject_module(client):
             ("addpoll", bound(PollmakerCommands.add_poll)),
             ("stoppoll", bound(PollmakerCommands.stop_poll)),
             ("delpoll", bound(PollmakerCommands.del_poll)),
-            ("votes", bound(PollmakerCommands.list_votes))
+            ("votes", bound(PollmakerCommands.list_votes)),
+            ("reread_votes", bound(PollmakerCommands.reread_votes))
         )
     )
 
