@@ -24,7 +24,7 @@ UNICODE_EMOJI_NUMBERS = [
     "🇸", "🇹", "🇺", "🇻", "🇼", "🇽", "🇾", "🇿"
 ]
 EMOJI_NUMBERS_TO_INT = {
-    c: i for c, i in enumerate(UNICODE_EMOJI_NUMBERS)
+    c: i for i, c in enumerate(UNICODE_EMOJI_NUMBERS)
 }
 
 def create_poll_template_text(options, poll_index, title=None):
@@ -34,7 +34,7 @@ def create_poll_template_text(options, poll_index, title=None):
     if title is not None:
         template += title + "\n"
     for i in range(len(options)):
-        template += f"{UNICODE_EMOJI_NUMBERS[i]}: {options[i]}\n"
+        template += f"{UNICODE_EMOJI_NUMBERS[i+1]}: {options[i]}\n"
     return template.strip()
 
 class PollModel:
@@ -222,8 +222,8 @@ class PollmakerCommands:
             else:
                 self.polls.append(poll)
             self.polls_by_msgid[poll.poll_message.id] = poll
-            for i in range(1, len(poll.options)+1):
-                await self.add_reaction(poll.poll_message, UNICODE_EMOJI_NUMBERS[i])
+            for i in range(len(poll.options)):
+                await self.add_reaction(poll.poll_message, UNICODE_EMOJI_NUMBERS[i+1])
             self.polls_changed = True
             return True
 
