@@ -9,7 +9,7 @@ from utils import shortened
 import modules.defaults
 import modules.pollmaker
 
-DEVELOPMENT_MODE = False
+DEVELOPMENT_MODE = True
 if DEVELOPMENT_MODE:
     credentials.TOKEN = credentials.DEV_TOKEN 
 
